@@ -1,0 +1,109 @@
+﻿<Window x:Class="VisionPlatform.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:VisionPlatform.ViewModels"
+        xmlns:views="clr-namespace:VisionPlatform.Views"
+        xmlns:infra="clr-namespace:VisionPlatform.Infrastructure"
+        Title="VisionPlatform 视觉检测平台" Height="900" Width="1440"
+        MinHeight="680" MinWidth="1200"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <infra:StatusToBrushConverter x:Key="StatusToBrushConverter" />
+        <DataTemplate DataType="{x:Type vm:InspectViewModel}">
+            <views:InspectView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RecipeViewModel}">
+            <views:RecipeView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
+            <views:HistoryView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:PlcViewModel}">
+            <views:PlcView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LogViewModel}">
+            <views:LogView />
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="34" />
+        </Grid.RowDefinitions>
+
+        <!-- ==================== 主区域 ==================== -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="190" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧导航 -->
+            <Border Grid.Column="0" Background="{StaticResource PanelBgBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Margin="18,22,18,20">
+                        <TextBlock Text="VISION" FontSize="22" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
+                        <TextBlock Text="视觉检测平台" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" />
+                    </StackPanel>
+
+                    <ListBox Grid.Row="1" ItemsSource="{Binding NavItems}"
+                             SelectedItem="{Binding SelectedNav}"
+                             Background="Transparent" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <ContentPresenter />
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <RadioButton GroupName="MainNav" IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                                             Style="{StaticResource NavButton}" Tag="{Binding Icon}" Content="{Binding Title}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <StackPanel Grid.Row="2" Margin="18,10">
+                        <TextBlock Text="v1.0.0  ·  上位机求职作品" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="C# / WPF / MVVM / OpenCV / Modbus TCP" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 内容区 -->
+            <ContentControl Grid.Column="1" Content="{Binding CurrentViewModel}" />
+        </Grid>
+
+        <!-- ==================== 状态栏 ==================== -->
+        <Border Grid.Row="1" Background="{StaticResource PanelBgBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="14,0">
+            <Grid>
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="9" Height="9" Fill="{Binding CameraOnline, Converter={StaticResource StatusToBrushConverter}}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBlock Text="{Binding CameraStatusText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                    <TextBlock Text="   |   " Foreground="{StaticResource BorderStrongBrush}" FontSize="12" />
+                    <Ellipse Width="9" Height="9" Fill="{Binding PlcOnline, Converter={StaticResource StatusToBrushConverter}}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBlock Text="{Binding PlcStatusText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                    <TextBlock Text="   |   " Foreground="{StaticResource BorderStrongBrush}" FontSize="12" />
+                    <TextBlock Text="{Binding TodayStatsText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                </StackPanel>
+                <TextBlock Text="{Binding ClockText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

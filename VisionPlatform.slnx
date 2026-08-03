@@ -1,0 +1,4 @@
+﻿<Solution>
+  <Project Path="VisionPlatform/VisionPlatform.csproj" />
+  <Project Path="VisionPlatform.SmokeTest/VisionPlatform.SmokeTest.csproj" />
+</Solution>

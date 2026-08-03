@@ -1,0 +1,24 @@
+﻿# ===== 构建产物 =====
+bin/
+obj/
+*.user
+*.suo
+
+# ===== IDE =====
+.vs/
+.idea/
+*.sln.iml
+
+# ===== 运行时数据（图像存档/数据库/日志/配方）=====
+VisionPlatform/bin/
+VisionPlatform/obj/
+AppData/
+
+# ===== 日志与崩溃转储 =====
+*.log
+crash.log
+
+# ===== 系统文件 =====
+Thumbs.db
+Desktop.ini
+.DS_Store

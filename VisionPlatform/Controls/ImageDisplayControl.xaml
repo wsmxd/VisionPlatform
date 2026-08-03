@@ -1,0 +1,52 @@
+<UserControl x:Class="VisionPlatform.Controls.ImageDisplayControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Self">
+    <Grid Background="#0D0F13">
+        <ScrollViewer x:Name="Scroll"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="#0D0F13">
+            <Grid x:Name="ContentRoot">
+                <Grid.RenderTransform>
+                    <ScaleTransform x:Name="Scale" ScaleX="1" ScaleY="1" />
+                </Grid.RenderTransform>
+                <Canvas x:Name="ContentCanvas" Background="#0D0F13">
+                    <Image x:Name="ImageHost" Stretch="None" />
+                    <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
+                </Canvas>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- 十字线 -->
+        <Canvas x:Name="CrosshairLayer" IsHitTestVisible="False">
+            <Rectangle x:Name="CrossV" Width="1" Visibility="Collapsed" Fill="#55FFFFFF" />
+            <Rectangle x:Name="CrossH" Height="1" Visibility="Collapsed" Fill="#55FFFFFF" />
+        </Canvas>
+
+        <!-- 底部信息栏 -->
+        <Border VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                Background="#CC101318" CornerRadius="0,4,4,0" Padding="10,5" Margin="0,0,0,0">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="CoordText" Foreground="#98A1AE" FontSize="12" Text="X: -  Y: -" />
+                <TextBlock Text="  |  " Foreground="#333A46" />
+                <TextBlock x:Name="GrayText" Foreground="#98A1AE" FontSize="12" Text="灰度: -" />
+                <TextBlock Text="  |  " Foreground="#333A46" />
+                <TextBlock x:Name="SizeText" Foreground="#98A1AE" FontSize="12" Text="尺寸: -" />
+            </StackPanel>
+        </Border>
+
+        <!-- 顶部工具条 -->
+        <Border VerticalAlignment="Top" HorizontalAlignment="Right"
+                Background="#CC101318" CornerRadius="0,0,0,4" Padding="8,6" Margin="0,0,0,0">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="适应" FontSize="11" Padding="10,4" Click="OnFit" />
+                <Button Content="100%" FontSize="11" Padding="10,4" Margin="6,0,0,0" Click="OnZoomOne" />
+                <Slider x:Name="ZoomSlider" Width="120" Minimum="10" Maximum="800"
+                        Value="100" Margin="10,0,0,0" VerticalAlignment="Center"
+                        ValueChanged="OnZoomSlider" />
+                <TextBlock x:Name="ZoomText" Text="100%" Foreground="#98A1AE" FontSize="12" Margin="8,0,0,0" Width="44" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
