@@ -58,8 +58,8 @@ public partial class RecipeViewModel : ObservableObject
     {
         if (SelectedRecipe is null) return;
         ServiceLocator.Recipes.Save(SelectedRecipe);
-        ServiceLocator.Log.Info($"配方已保存: {SelectedRecipe.Name}");
         OnPropertyChanged(nameof(Recipes));
+        ServiceLocator.Log.Info($"配方已保存: {SelectedRecipe.Name}");
     }
 
     [RelayCommand]
