@@ -30,7 +30,8 @@ public partial class InspectViewModel : ObservableObject
 {
     private readonly DispatcherTimer _previewTimer;
     private readonly DispatcherTimer _statusTimer;
-    private Mat? _lastFullFrame;      // 最近一帧完整图像（用于截取模板）
+    private readonly object _frameLock = new(); // 保护 _lastFullFrame（采集线程/UI 线程共享）
+    private Mat? _lastFullFrame;      // 最近一帧完整图像（用于截取模板，VM 独占所有权）
     private bool _freezeUntilTrigger; // 结果帧冻结显示
 
     public InspectionPipeline Pipeline { get; } = new();
@@ -135,10 +136,14 @@ public partial class InspectViewModel : ObservableObject
         {
             try
             {
-                var clone = frame.Clone();
-                _lastFullFrame?.Dispose();
-                _lastFullFrame = clone;
-                FrameReady?.Invoke(clone);
+                var view = frame.Clone();       // 交给 UI 显示（View 负责释放）
+                lock (_frameLock)
+                {
+                    _lastFullFrame?.Dispose();
+                    _lastFullFrame = frame.Clone(); // VM 自持副本，供截取模板
+                }
+                if (FrameReady is null) view.Dispose();
+                else FrameReady?.Invoke(view);
             }
             finally
             {
@@ -232,19 +237,31 @@ public partial class InspectViewModel : ObservableObject
     [RelayCommand]
     private void SaveTemplate()
     {
-        if (_lastFullFrame is null)
+        Mat tpl;
+        lock (_frameLock)
         {
-            ServiceLocator.Log.Warn("尚无可用帧，请先打开相机");
-            return;
+            if (_lastFullFrame is null)
+            {
+                ServiceLocator.Log.Warn("尚无可用帧，请先打开相机");
+                return;
+            }
+            tpl = _lastFullFrame.Clone(); // 加锁取出副本，避免被采集线程替换/释放
         }
-        var dir = Path.Combine(ServiceLocator.DataDir, "Templates");
-        Directory.CreateDirectory(dir);
-        var path = Path.Combine(dir, $"{Recipe.Name}_{DateTime.Now:HHmmss}.png");
-        if (Cv2.ImWrite(path, _lastFullFrame))
+        try
         {
-            Recipe.TemplatePath = path;
-            ServiceLocator.Recipes.Save(Recipe);
-            ServiceLocator.Log.Info($"模板已保存: {path}");
+            var dir = Path.Combine(ServiceLocator.DataDir, "Templates");
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, $"{Recipe.Name}_{DateTime.Now:HHmmss}.png");
+            if (Cv2.ImWrite(path, tpl))
+            {
+                Recipe.TemplatePath = path;
+                ServiceLocator.Recipes.Save(Recipe);
+                ServiceLocator.Log.Info($"模板已保存: {path}");
+            }
+        }
+        finally
+        {
+            tpl.Dispose();
         }
     }
 
@@ -253,19 +270,24 @@ public partial class InspectViewModel : ObservableObject
     private void OnPipelineFrame(Mat frame)
     {
         if (_freezeUntilTrigger) return; // 结果帧冻结期间不刷新
-        var clone = frame.Clone();
-        _lastFullFrame?.Dispose();
-        _lastFullFrame = clone;
+        var view = frame.Clone();       // 交给 UI 显示（View 负责释放）
+        var tpl = frame.Clone();        // VM 自持副本，供截取模板
+        lock (_frameLock)
+        {
+            _lastFullFrame?.Dispose();
+            _lastFullFrame = tpl;
+        }
         var ui = Application.Current?.Dispatcher;
         if (ui is null || ui.HasShutdownStarted)
         {
-            clone.Dispose();
+            view.Dispose();
             return;
         }
         ui.BeginInvoke(() =>
         {
             ClearOverlays();
-            FrameReady?.Invoke(clone);
+            if (FrameReady is null) view.Dispose();
+            else FrameReady?.Invoke(view);
         });
     }
 
@@ -284,14 +306,19 @@ public partial class InspectViewModel : ObservableObject
 
     private void ShowResult(InspectionResult result, Mat frame)
     {
-        _lastFullFrame?.Dispose();
-        _lastFullFrame = frame.Clone();
+        var view = frame.Clone();       // 交给 UI 显示（View 负责释放）
+        lock (_frameLock)
+        {
+            _lastFullFrame?.Dispose();
+            _lastFullFrame = frame.Clone(); // VM 自持副本，供截取模板
+        }
         frame.Dispose();
 
         ClearOverlays();
         foreach (var d in result.Defects)
             AddOverlay(d);
-        FrameReady?.Invoke(_lastFullFrame);
+        if (FrameReady is null) view.Dispose();
+        else FrameReady?.Invoke(view);
 
         RecentResults.Insert(0, new ResultItem
         {
@@ -361,7 +388,10 @@ public partial class InspectViewModel : ObservableObject
         _previewTimer.Stop();
         _statusTimer.Stop();
         Pipeline.Dispose();
-        _lastFullFrame?.Dispose();
-        _lastFullFrame = null;
+        lock (_frameLock)
+        {
+            _lastFullFrame?.Dispose();
+            _lastFullFrame = null;
+        }
     }
 }
