@@ -39,9 +39,12 @@ public sealed class InspectionPipeline : IDisposable
     private CancellationTokenSource? _cts;
     private Task? _captureTask;
     private Task? _processTask;
+    private Task? _stopTask;          // 正在执行的停止任务（防止并发 Stop）
+    private CameraManager? _cameras;  // 当前流水线持有的相机（超时强制关闭用）
+    private readonly Lock _stateLock = new();
     private bool _busy;
 
-    public bool IsRunning => _captureTask is not null && !_captureTask.IsCompleted;
+    public bool IsRunning => _cts is not null;
 
     public TriggerMode TriggerMode { get; set; } = TriggerMode.Interval;
     public double IntervalMs { get; set; } = 1000;
@@ -88,42 +91,102 @@ public sealed class InspectionPipeline : IDisposable
 
     public void Start(Recipe recipe, CameraManager cameras)
     {
-        if (IsRunning) return;
-
-        // 打开相机
-        if (cameras.CurrentItem is null)
+        lock (_stateLock)
         {
-            Log.Warn("未选择相机源");
-            return;
-        }
-        if (!cameras.Open(cameras.CurrentItem, recipe))
-        {
-            Log.Error($"相机打开失败: {cameras.CurrentItem.Name}");
-            return;
-        }
+            if (_cts is not null || _stopTask is not null) return;
 
-        CurrentRecipeName = recipe.Name;
-        _cts = new CancellationTokenSource();
-        var token = _cts.Token;
-        _captureTask = Task.Run(() => CaptureLoop(cameras, token));
-        _processTask = Task.Run(() => ProcessLoop(recipe, token));
+            // 打开相机
+            if (cameras.CurrentItem is null)
+            {
+                Log.Warn("未选择相机源");
+                return;
+            }
+            if (!cameras.Open(cameras.CurrentItem, recipe))
+            {
+                Log.Error($"相机打开失败: {cameras.CurrentItem.Name}");
+                return;
+            }
+
+            // 清理上次停止后队列残留帧
+            while (_queue.Reader.TryRead(out var stale)) stale.frame.Dispose();
+
+            _cameras = cameras;
+            _busy = false;
+            CurrentRecipeName = recipe.Name;
+            _cts = new CancellationTokenSource();
+            var token = _cts.Token;
+            _captureTask = Task.Run(() => CaptureLoop(cameras, token));
+            _processTask = Task.Run(() => ProcessLoop(recipe, token));
+        }
         Log.Info($"检测流水线已启动 (配方: {recipe.Name})");
         StateChanged?.Invoke();
     }
 
-    public void Stop()
+    /// <summary>停止流水线（异步等待线程退出；卡死时强制关相机解除阻塞，不阻塞调用线程）。</summary>
+    public Task StopAsync()
     {
-        if (!IsRunning) return;
-        _cts?.Cancel();
+        lock (_stateLock)
+        {
+            if (_stopTask is not null) return _stopTask;
+            if (_cts is null)
+            {
+                _captureTask = null;
+                _processTask = null;
+                return Task.CompletedTask;
+            }
+            _stopTask = StopCoreAsync();
+            return _stopTask;
+        }
+    }
+
+    public void Stop() => StopAsync().GetAwaiter().GetResult();
+
+    private async Task StopCoreAsync()
+    {
+        CancellationTokenSource? cts;
+        Task? capture, process;
+        lock (_stateLock)
+        {
+            cts = _cts;
+            capture = _captureTask;
+            process = _processTask;
+        }
+        cts?.Cancel();
+
+        var all = Task.WhenAll(capture!, process!);
         try
         {
-            Task.WaitAll([_captureTask!, _processTask!], 3000);
+            await all.WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
         }
-        catch (AggregateException) { }
-        _captureTask = null;
-        _processTask = null;
-        _cts?.Dispose();
-        _cts = null;
+        catch (TimeoutException)
+        {
+            // 线程卡死（如 VideoCapture.Read 阻塞）时强制关相机解除阻塞
+            Log.Warn("停止超时，强制关闭相机以解除采集阻塞");
+            _cameras?.Close();
+            try
+            {
+                await all.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                Log.Error("流水线线程未在超时后退出，任务可能泄漏");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"流水线线程异常终止: {ex.Message}");
+        }
+
+        lock (_stateLock)
+        {
+            _captureTask = null;
+            _processTask = null;
+            _busy = false;
+            _cts?.Dispose();
+            _cts = null;
+            _cameras = null;
+            _stopTask = null;
+        }
         Log.Info("检测流水线已停止");
         StateChanged?.Invoke();
     }

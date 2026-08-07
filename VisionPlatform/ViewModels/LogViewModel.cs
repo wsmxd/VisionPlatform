@@ -23,7 +23,7 @@ public partial class LogViewModel : ObservableObject
     [ObservableProperty]
     private string _logDir = "";
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly List<LogEntry> _pending = [];
 
     public LogViewModel()

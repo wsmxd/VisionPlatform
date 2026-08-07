@@ -8,7 +8,7 @@ namespace VisionPlatform.Services.Logging;
 public sealed class LogService : IDisposable
 {
     private readonly string _logDir;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly StreamWriter _writer;
     private readonly ObservableCollection<LogEntry> _buffer = [];
     private const int BufferCapacity = 500;
@@ -24,7 +24,7 @@ public sealed class LogService : IDisposable
     }
 
     public ObservableCollection<LogEntry> Buffer => _buffer;
-    public object SyncRoot => _lock;
+    public Lock SyncRoot => _lock;
 
     public void Debug(string msg) => Write(LogLevel.Debug, msg);
     public void Info(string msg) => Write(LogLevel.Info, msg);

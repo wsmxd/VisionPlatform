@@ -10,7 +10,7 @@ namespace VisionPlatform.Services.Detection;
 /// </summary>
 public sealed class TemplateDetector : IDetector
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private Mat? _template;
     private string _templatePath = "";
 

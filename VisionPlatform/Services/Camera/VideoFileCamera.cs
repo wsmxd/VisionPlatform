@@ -8,7 +8,7 @@ namespace VisionPlatform.Services.Camera;
 public sealed class VideoFileCamera : ICamera
 {
     private VideoCapture? _capture;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private int _width, _height;
 
     public VideoFileCamera(string filePath)

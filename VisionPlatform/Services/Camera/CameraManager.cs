@@ -19,7 +19,7 @@ public class CameraItem
 /// <summary>相机管理器：枚举可用相机源、创建并持有当前相机。</summary>
 public sealed class CameraManager : IDisposable
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     public ICamera? CurrentCamera { get; private set; }
     public CameraItem? CurrentItem { get; private set; }
 

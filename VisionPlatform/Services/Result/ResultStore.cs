@@ -13,7 +13,7 @@ public sealed class ResultStore
 {
     private readonly string _dbPath;
     private readonly string _imageDir;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly JsonSerializerOptions _json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     public ResultStore(string dbPath, string imageDir)

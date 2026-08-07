@@ -16,7 +16,7 @@ public sealed class ModbusTcpServer : IDisposable
     private readonly TcpListener _listener;
     private readonly bool[] _coils = new bool[CoilCount];
     private readonly ushort[] _registers = new ushort[RegisterCount];
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly List<TcpClient> _clients = [];
     private Task? _acceptTask;

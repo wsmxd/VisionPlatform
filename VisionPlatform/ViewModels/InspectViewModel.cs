@@ -30,7 +30,7 @@ public partial class InspectViewModel : ObservableObject
 {
     private readonly DispatcherTimer _previewTimer;
     private readonly DispatcherTimer _statusTimer;
-    private readonly object _frameLock = new(); // 保护 _lastFullFrame（采集线程/UI 线程共享）
+    private readonly Lock _frameLock = new(); // 保护 _lastFullFrame（采集线程/UI 线程共享）
     private Mat? _lastFullFrame;      // 最近一帧完整图像（用于截取模板，VM 独占所有权）
     private bool _freezeUntilTrigger; // 结果帧冻结显示
 
@@ -214,10 +214,10 @@ public partial class InspectViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Stop()
+    private async Task StopAsync()
     {
         if (!Pipeline.IsRunning) return;
-        Pipeline.Stop();
+        await Pipeline.StopAsync();
         IsRunning = false;
         RunStatus = "已停止";
         ClearOverlays();
