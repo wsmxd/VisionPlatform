@@ -45,7 +45,7 @@ public sealed class BlobDetector : IDetector
             var bbox = Cv2.BoundingRect(contour);
             // 置信度：缺陷区域平均灰度相对背景的偏差
             using var mask = new Mat(gray.Size(), MatType.CV_8UC1, Scalar.All(0));
-            Cv2.DrawContours(mask, new[] { contour }, -1, new Scalar(255), -1);
+            Cv2.DrawContours(mask, [contour], -1, new Scalar(255), -1);
             var mean = Cv2.Mean(gray, mask).Val0;
             var confidence = Math.Clamp((255 - mean) / 255.0 * 1.2, 0, 1);
 
